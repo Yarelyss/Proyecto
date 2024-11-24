@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from Bio import SeqIO, Entrez
-from Bio.Seq import Seq
-from Bio.SeqUtils import molecular_weight
+from Bio import SeqIO
+import random
 from collections import Counter
 
 # Configuración inicial del Dashboard
@@ -69,49 +68,18 @@ def graficar_frecuencia(sequence):
 
 # Input de la secuencia
 st.sidebar.subheader("Introduce tu secuencia")
-seq_option = st.sidebar.radio(
-    "Elige el tipo de entrada",
-    ["Secuencia de ADN/ARN", "Secuencia de proteína", "ID de NCBI"]
+input_sequence = st.sidebar.text_area(
+    "Secuencia de ADN/ARN o proteína:",
+    placeholder="Ejemplo: ATCGTTAGC o MVLTI...",
+    height=150
 )
-
-if seq_option == "Secuencia de ADN/ARN":
-    input_sequence = st.sidebar.text_area(
-        "Secuencia de ADN/ARN o proteína:",
-        placeholder="Ejemplo: ATCGTTAGC o MVLTI...",
-        height=150
-    )
-
-elif seq_option == "Secuencia de proteína":
-    input_sequence = st.sidebar.text_area(
-        "Secuencia de proteína:",
-        placeholder="Ejemplo: MVLTI...",
-        height=150
-    )
-
-elif seq_option == "ID de NCBI":
-    input_sequence = st.sidebar.text_input(
-        "Introduce el ID de NCBI (ejemplo: NM_001301717 o NP_001292301)"
-    )
 
 # Botón para cargar ejemplos
 if st.sidebar.button("Cargar Ejemplo"):
     input_sequence = "ATCGTTAGC"  # Ejemplo predefinido para ADN
 
-# Si se selecciona un ID de NCBI, se obtiene la secuencia de NCBI
-if seq_option == "ID de NCBI" and input_sequence:
-    try:
-        # Buscar la secuencia en NCBI usando Entrez
-        Entrez.email = "a223213329@unison.mx"  # Asegúrate de poner tu correo aquí
-        handle = Entrez.efetch(db="nucleotide", id=input_sequence, rettype="gb", retmode="text")
-        record = SeqIO.read(handle, "genbank")
-        sequence = str(record.seq)
-        st.write(f"**Secuencia de NCBI {input_sequence}:**")
-        st.code(sequence)
-    except Exception as e:
-        st.error(f"Hubo un error al obtener la secuencia de NCBI: {e}")
-
 # Validación y limpieza de la secuencia
-if input_sequence and seq_option != "ID de NCBI":
+if input_sequence:
     sequence = ''.join(filter(str.isalpha, input_sequence)).upper()
     st.write("**Secuencia procesada:**")
     st.code(sequence)
@@ -168,17 +136,11 @@ if input_sequence and seq_option != "ID de NCBI":
     })
 
     if seq_type == "ADN":
-        results = results.append({"Propiedad": "Contenido GC (%)", "Valor": gc_content}, ignore_index=True)
+        results = pd.concat([results, pd.DataFrame([{"Propiedad": "Contenido GC (%)", "Valor": gc_content}])], ignore_index=True)
 
     if seq_type == "Proteína":
-        results = results.append(
-            {"Propiedad": "Residuos hidrofóbicos", "Valor": hydrophobic},
-            ignore_index=True
-        )
-        results = results.append(
-            {"Propiedad": "Residuos hidrofílicos", "Valor": hydrophilic},
-            ignore_index=True
-        )
+        results = pd.concat([results, pd.DataFrame([{"Propiedad": "Residuos hidrofóbicos", "Valor": hydrophobic}])], ignore_index=True)
+        results = pd.concat([results, pd.DataFrame([{"Propiedad": "Residuos hidrofílicos", "Valor": hydrophilic}])], ignore_index=True)
 
     st.download_button(
         label="Descargar resultados como CSV",
