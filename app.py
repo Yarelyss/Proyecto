@@ -101,7 +101,7 @@ if st.sidebar.button("Cargar Ejemplo"):
 if seq_option == "ID de NCBI" and input_sequence:
     try:
         # Buscar la secuencia en NCBI usando Entrez
-        Entrez.email = "tu_email@example.com"  # Asegúrate de poner tu correo aquí
+        Entrez.email = "a223213329@unison.mx"  # Asegúrate de poner tu correo aquí
         handle = Entrez.efetch(db="nucleotide", id=input_sequence, rettype="gb", retmode="text")
         record = SeqIO.read(handle, "genbank")
         sequence = str(record.seq)
