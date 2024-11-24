@@ -1,8 +1,7 @@
 import streamlit as st
+from Bio import Entrez, SeqIO
 import pandas as pd
 import plotly.express as px
-from Bio import SeqIO
-import random
 from collections import Counter
 
 # Configuración inicial del Dashboard
@@ -43,17 +42,6 @@ def traducir_arn(arn):
         proteina += codigo_genetico.get(codon, "X")
     return proteina
 
-def visualizar_secuencia(sequence):
-    """Visualiza una secuencia agrupada en bloques de 10 caracteres con colores."""
-    bloques = [sequence[i:i+10] for i in range(0, len(sequence), 10)]
-    colores = ["#FFDDC1", "#FFABAB", "#FFC3A0", "#D5AAFF"]
-    html = "<div>"
-    for i, bloque in enumerate(bloques):
-        color = colores[i % len(colores)]
-        html += f'<span style="background-color:{color};padding:4px;margin:2px;display:inline-block;">{bloque}</span>'
-    html += "</div>"
-    return html
-
 def graficar_frecuencia(sequence):
     """Grafica la frecuencia de bases o residuos en la secuencia."""
     conteo = Counter(sequence)
@@ -66,106 +54,57 @@ def graficar_frecuencia(sequence):
     )
     return fig
 
+# Función para obtener secuencia de NCBI
+def obtener_secuencia_nucleotide(query, retmax=1):
+    """Obtiene secuencias desde NCBI por nombre o ID de gen."""
+    Entrez.email = "your-email@example.com"  # Cambia esto por tu email
+    handle = Entrez.esearch(db="nucleotide", term=query, retmax=retmax)
+    record = Entrez.read(handle)
+    id_gen = record["IdList"][0]  # Toma el primer gen de la búsqueda
+    handle = Entrez.efetch(db="nucleotide", id=id_gen, rettype="gb", retmode="text")
+    seq_record = SeqIO.read(handle, "genbank")
+    return str(seq_record.seq)
+
 # Input de la secuencia
-st.sidebar.subheader("Introduce tu secuencia")
-input_sequence = st.sidebar.text_area(
-    "Secuencia de ADN/ARN o proteína:",
-    placeholder="Ejemplo: ATCGTTAGC o MVLTI...",
-    height=150
-)
+st.sidebar.subheader("Buscar gen en NCBI")
+gene = st.sidebar.text_input("Introduce un nombre de gen o ID (Ej. BRCA1):", "BRCA1")
 
-# Botón para cargar ejemplos
-if st.sidebar.button("Cargar Ejemplo"):
-    input_sequence = "ATCGTTAGC"  # Ejemplo predefinido para ADN
-
-# Subida de archivo FASTA
-st.sidebar.subheader("Sube un archivo FASTA")
-fasta_file = st.sidebar.file_uploader("Selecciona un archivo FASTA", type=["fasta"])
-
-if fasta_file is not None:
-    # Asegurarse de abrir el archivo FASTA en modo de texto
+# Obtener secuencia desde NCBI
+if gene:
     try:
-        fasta_sequences = list(SeqIO.parse(fasta_file, "fasta"))
-        if fasta_sequences:
-            input_sequence = str(fasta_sequences[0].seq)
-            st.write("**Secuencia cargada desde el archivo FASTA:**")
-            st.code(input_sequence)
+        st.sidebar.text("Buscando secuencia en NCBI...")
+        sequence = obtener_secuencia_nucleotide(gene)
+        st.write(f"**Secuencia obtenida para el gen {gene}:**")
+        st.code(sequence)
+
+        # Procesar la secuencia
+        if sequence:
+            seq_type = "ADN" if set(sequence).issubset({"A", "T", "C", "G"}) else "Desconocido"
+            st.write(f"Tipo de secuencia detectado: **{seq_type}**")
+            length = len(sequence)
+            st.write(f"Longitud de la secuencia: **{length}** bases")
+
+            if seq_type == "ADN":
+                gc_content = calcular_gc(sequence)
+                st.write(f"Contenido GC: **{gc_content}%**")
+                arn = transcribir_adn(sequence)
+                st.write("**Transcripción a ARN:**")
+                st.code(arn)
+
+            # Gráfico de frecuencia
+            freq_fig = graficar_frecuencia(sequence)
+            st.plotly_chart(freq_fig)
+
+            # Exportar resultados
+            results = pd.DataFrame({
+                "Propiedad": ["Tipo de secuencia", "Longitud", "GC (%)"],
+                "Valor": [seq_type, length, gc_content]
+            })
+            st.download_button(
+                label="Descargar resultados como CSV",
+                data=results.to_csv(index=False),
+                file_name=f"resultados_{gene}.csv",
+                mime="text/csv"
+            )
     except Exception as e:
-        st.error(f"Error al procesar el archivo FASTA: {e}")
-
-# Validación y limpieza de la secuencia
-if input_sequence:
-    sequence = ''.join(filter(str.isalpha, input_sequence)).upper()
-    st.write("**Secuencia procesada:**")
-    st.code(sequence)
-
-    # Identificar tipo de secuencia
-    if set(sequence).issubset({"A", "T", "C", "G"}):
-        seq_type = "ADN"
-    elif set(sequence).issubset({"A", "U", "C", "G"}):
-        seq_type = "ARN"
-    else:
-        seq_type = "Proteína"
-    st.write(f"Tipo de secuencia detectado: **{seq_type}**")
-
-    # Análisis
-    length = len(sequence)
-    st.write(f"Longitud de la secuencia: **{length}** bases o residuos")
-
-    if seq_type == "ADN":
-        gc_content = calcular_gc(sequence)
-        st.write(f"Contenido GC: **{gc_content}%**")
-        arn = transcribir_adn(sequence)
-        st.write("**Transcripción a ARN:**")
-        st.code(arn)
-
-    if seq_type == "ARN":
-        proteina = traducir_arn(sequence)
-        st.write("**Traducción a Proteína:**")
-        st.code(proteina)
-
-    if seq_type == "Proteína":
-        hydrophobic = sum(sequence.count(aa) for aa in "AILMFWYV")
-        hydrophilic = sum(sequence.count(aa) for aa in "RKDENQ")
-        
-        # Gráfico de composición
-        fig = px.pie(
-            values=[hydrophobic, hydrophilic, length - hydrophobic - hydrophilic],
-            names=["Hidrofóbicos", "Hidrofílicos", "Otros"],
-            title="Composición de la proteína"
-        )
-        st.plotly_chart(fig)
-
-    # Gráfico de frecuencia
-    freq_fig = graficar_frecuencia(sequence)
-    st.plotly_chart(freq_fig)
-
-    # Visualización de la secuencia
-    st.write("**Secuencia visualizada:**")
-    st.markdown(visualizar_secuencia(sequence), unsafe_allow_html=True)
-
-    # Exportar resultados
-    results = pd.DataFrame({
-        "Propiedad": ["Tipo de secuencia", "Longitud"],
-        "Valor": [seq_type, length]
-    })
-
-    if seq_type == "ADN":
-        results = results.append({"Propiedad": "Contenido GC (%)", "Valor": gc_content}, ignore_index=True)
-
-    if seq_type == "Proteína":
-        results = results.append(
-            {"Propiedad": "Residuos hidrofóbicos", "Valor": hydrophobic},
-            ignore_index=True
-        )
-        results = results.append(
-            {"Propiedad": "Residuos hidrofílicos", "Valor": hydrophilic},
-            ignore_index=True
-        )
-
-    st.download_button(
-        label="Descargar resultados como CSV",
-        data=results.to_csv(index=False),
-        file_name="resultados_bioinformaticos.csv",
-        mime="text/csv"
-    )
+        st.error(f"Error al obtener la secuencia: {e}")
