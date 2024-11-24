@@ -23,19 +23,19 @@ def transcribir_adn(adn):
 def traducir_arn(arn):
     """Traduce una secuencia de ARN a proteína."""
     codigo_genetico = {
-        "AUG":"M", "UGG":"W", "UUU":"F", "UUC":"F",
-        "UUA":"L", "UUG":"L", "CUU":"L", "CUC":"L",
-        "CUA":"L", "CUG":"L", "AUU":"I", "AUC":"I",
-        "AUA":"I", "GUU":"V", "GUC":"V", "GUA":"V",
-        "GUG":"V", "UCU":"S", "UCC":"S", "UCA":"S",
-        "UCG":"S", "CCU":"P", "CCC":"P", "CCA":"P",
-        "CCG":"P", "ACU":"T", "ACC":"T", "ACA":"T",
-        "ACG":"T", "GCU":"A", "GCC":"A", "GCA":"A",
-        "GCG":"A", "UAU":"Y", "UAC":"Y", "CAU":"H",
-        "CAC":"H", "CAA":"Q", "CAG":"Q", "AAU":"N",
-        "AAC":"N", "AAA":"K", "AAG":"K", "GAU":"D",
-        "GAC":"D", "GAA":"E", "GAG":"E", "UGU":"C",
-        "UGC":"C", "UGA":"_", "UAA":"_", "UAG":"_",
+        "AUG": "M", "UGG": "W", "UUU": "F", "UUC": "F",
+        "UUA": "L", "UUG": "L", "CUU": "L", "CUC": "L",
+        "CUA": "L", "CUG": "L", "AUU": "I", "AUC": "I",
+        "AUA": "I", "GUU": "V", "GUC": "V", "GUA": "V",
+        "GUG": "V", "UCU": "S", "UCC": "S", "UCA": "S",
+        "UCG": "S", "CCU": "P", "CCC": "P", "CCA": "P",
+        "CCG": "P", "ACU": "T", "ACC": "T", "ACA": "T",
+        "ACG": "T", "GCU": "A", "GCC": "A", "GCA": "A",
+        "GCG": "A", "UAU": "Y", "UAC": "Y", "CAU": "H",
+        "CAC": "H", "CAA": "Q", "CAG": "Q", "AAU": "N",
+        "AAC": "N", "AAA": "K", "AAG": "K", "GAU": "D",
+        "GAC": "D", "GAA": "E", "GAG": "E", "UGU": "C",
+        "UGC": "C", "UGA": "_", "UAA": "_", "UAG": "_",
     }
     proteina = ""
     for i in range(0, len(arn) - 2, 3):
@@ -68,15 +68,30 @@ def graficar_frecuencia(sequence):
 
 # Input de la secuencia
 st.sidebar.subheader("Introduce tu secuencia")
-input_sequence = st.sidebar.text_area(
-    "Secuencia de ADN/ARN o proteína:",
-    placeholder="Ejemplo: ATCGTTAGC o MVLTI...",
-    height=150
+input_type = st.sidebar.selectbox(
+    "Selecciona el tipo de entrada:",
+    ["Secuencia de ADN/ARN", "Secuencia de proteína", "ID o nombre de secuencia (NCBI)"]
 )
+
+if input_type == "ID o nombre de secuencia (NCBI)":
+    input_sequence = st.sidebar.text_input(
+        "Introduce un nombre de gen o ID (Ej. BRCA1):",
+        placeholder="Ejemplo: NM_007294"
+    )
+    st.sidebar.write("Puedes consultar más detalles en [NCBI](https://www.ncbi.nlm.nih.gov/).")
+else:
+    input_sequence = st.sidebar.text_area(
+        "Introduce tu secuencia:",
+        placeholder="Ejemplo: ATCGTTAGC o MVLTI...",
+        height=150
+    )
 
 # Botón para cargar ejemplos
 if st.sidebar.button("Cargar Ejemplo"):
-    input_sequence = "ATCGTTAGC"  # Ejemplo predefinido para ADN
+    if input_type == "Secuencia de ADN/ARN":
+        input_sequence = "ATCGTTAGC"  # Ejemplo predefinido para ADN
+    elif input_type == "Secuencia de proteína":
+        input_sequence = "MVLTIHP"  # Ejemplo predefinido para proteína
 
 # Validación y limpieza de la secuencia
 if input_sequence:
@@ -112,7 +127,7 @@ if input_sequence:
     if seq_type == "Proteína":
         hydrophobic = sum(sequence.count(aa) for aa in "AILMFWYV")
         hydrophilic = sum(sequence.count(aa) for aa in "RKDENQ")
-        
+
         # Gráfico de composición
         fig = px.pie(
             values=[hydrophobic, hydrophilic, length - hydrophobic - hydrophilic],
@@ -136,11 +151,13 @@ if input_sequence:
     })
 
     if seq_type == "ADN":
-        results = pd.concat([results, pd.DataFrame([{"Propiedad": "Contenido GC (%)", "Valor": gc_content}])], ignore_index=True)
+        new_row = pd.DataFrame([{"Propiedad": "Contenido GC (%)", "Valor": gc_content}])
+        results = pd.concat([results, new_row], ignore_index=True)
 
     if seq_type == "Proteína":
-        results = pd.concat([results, pd.DataFrame([{"Propiedad": "Residuos hidrofóbicos", "Valor": hydrophobic}])], ignore_index=True)
-        results = pd.concat([results, pd.DataFrame([{"Propiedad": "Residuos hidrofílicos", "Valor": hydrophilic}])], ignore_index=True)
+        hydrophobic_row = pd.DataFrame([{"Propiedad": "Residuos hidrofóbicos", "Valor": hydrophobic}])
+        hydrophilic_row = pd.DataFrame([{"Propiedad": "Residuos hidrofílicos", "Valor": hydrophilic}])
+        results = pd.concat([results, hydrophobic_row, hydrophilic_row], ignore_index=True)
 
     st.download_button(
         label="Descargar resultados como CSV",
@@ -148,3 +165,4 @@ if input_sequence:
         file_name="resultados_bioinformaticos.csv",
         mime="text/csv"
     )
+    
