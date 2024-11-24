@@ -82,12 +82,18 @@ st.sidebar.subheader("Sube un archivo FASTA")
 fasta_file = st.sidebar.file_uploader("Selecciona un archivo FASTA", type=["fasta"])
 
 if fasta_file is not None:
-    # Leer el archivo FASTA y extraer la primera secuencia
-    fasta_sequences = list(SeqIO.parse(fasta_file, "fasta"))
-    if fasta_sequences:
-        input_sequence = str(fasta_sequences[0].seq)
-        st.write("**Secuencia cargada desde el archivo FASTA:**")
-        st.code(input_sequence)
+    try:
+        # Lee el archivo FASTA con el modo adecuado
+        fasta_sequences = list(SeqIO.parse(fasta_file, "fasta"))
+        if fasta_sequences:
+            # Si se encuentra al menos una secuencia en el archivo FASTA
+            input_sequence = str(fasta_sequences[0].seq)
+            st.write("**Secuencia cargada desde el archivo FASTA:**")
+            st.code(input_sequence)
+        else:
+            st.error("No se encontró ninguna secuencia en el archivo FASTA.")
+    except Exception as e:
+        st.error(f"Ocurrió un error al procesar el archivo FASTA: {e}")
 
 # Validación y limpieza de la secuencia
 if input_sequence:
@@ -147,10 +153,17 @@ if input_sequence:
     })
 
     if seq_type == "ADN":
-        results = pd.concat([results, pd.DataFrame({"Propiedad": ["Contenido GC (%)"], "Valor": [gc_content]})], ignore_index=True)
+        results = results.append({"Propiedad": "Contenido GC (%)", "Valor": gc_content}, ignore_index=True)
 
     if seq_type == "Proteína":
-        results = pd.concat([results, pd.DataFrame({"Propiedad": ["Residuos hidrofóbicos", "Residuos hidrofílicos"], "Valor": [hydrophobic, hydrophilic]})], ignore_index=True)
+        results = results.append(
+            {"Propiedad": "Residuos hidrofóbicos", "Valor": hydrophobic},
+            ignore_index=True
+        )
+        results = results.append(
+            {"Propiedad": "Residuos hidrofílicos", "Valor": hydrophilic},
+            ignore_index=True
+        )
 
     st.download_button(
         label="Descargar resultados como CSV",
@@ -158,13 +171,3 @@ if input_sequence:
         file_name="resultados_bioinformaticos.csv",
         mime="text/csv"
     )
-
-# Pie de página
-st.sidebar.markdown("---")
-st.sidebar.write("**Instrucciones de uso:**")
-st.sidebar.write(
-    "1. Introduce tu secuencia de ADN, ARN o proteína en el cuadro de texto.\n"
-    "2. Si no tienes una secuencia, haz clic en 'Cargar Ejemplo'.\n"
-    "3. También puedes subir un archivo FASTA para analizarlo.\n"
-    "4. Descarga los resultados en formato CSV si lo deseas."
-)
