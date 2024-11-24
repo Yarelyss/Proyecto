@@ -7,7 +7,7 @@ from collections import Counter
 
 # Configuración inicial del Dashboard
 st.set_page_config(page_title="Análisis Bioinformático", layout="centered")
-st.title("Proyecto Final Analisis de secuencias")
+st.title("Dashboard Bioinformático Interactivo")
 st.sidebar.header("Opciones")
 
 # Funciones auxiliares
