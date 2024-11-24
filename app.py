@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from Bio import SeqIO
-import io
+import random
 from collections import Counter
 
 # Configuración inicial del Dashboard
@@ -83,17 +83,15 @@ st.sidebar.subheader("Sube un archivo FASTA")
 fasta_file = st.sidebar.file_uploader("Selecciona un archivo FASTA", type=["fasta"])
 
 if fasta_file is not None:
-    # Convertir el archivo binario en texto
-    fasta_content = fasta_file.getvalue().decode("utf-8")
-    fasta_file_text = io.StringIO(fasta_content)
-    
-    # Leer el archivo FASTA y extraer la primera secuencia
-    fasta_sequences = list(SeqIO.parse(fasta_file_text, "fasta"))
-    
-    if fasta_sequences:
-        input_sequence = str(fasta_sequences[0].seq)
-        st.write("**Secuencia cargada desde el archivo FASTA:**")
-        st.code(input_sequence)
+    # Asegurarse de abrir el archivo FASTA en modo de texto
+    try:
+        fasta_sequences = list(SeqIO.parse(fasta_file, "fasta"))
+        if fasta_sequences:
+            input_sequence = str(fasta_sequences[0].seq)
+            st.write("**Secuencia cargada desde el archivo FASTA:**")
+            st.code(input_sequence)
+    except Exception as e:
+        st.error(f"Error al procesar el archivo FASTA: {e}")
 
 # Validación y limpieza de la secuencia
 if input_sequence:
