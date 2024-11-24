@@ -83,8 +83,9 @@ fasta_file = st.sidebar.file_uploader("Selecciona un archivo FASTA", type=["fast
 
 if fasta_file is not None:
     try:
-        # Lee el archivo FASTA con el modo adecuado
+        # Asegúrate de abrir el archivo en modo binario para evitar el error StreamModeError
         fasta_sequences = list(SeqIO.parse(fasta_file, "fasta"))
+        
         if fasta_sequences:
             # Si se encuentra al menos una secuencia en el archivo FASTA
             input_sequence = str(fasta_sequences[0].seq)
