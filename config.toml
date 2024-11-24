@@ -1,6 +1,0 @@
-[theme]
-primaryColor = "#8A2BE2"  # Tono lila
-backgroundColor = "#F0E6FF"  # Fondo de la página en un tono más claro
-secondaryBackgroundColor = "#D8BFD8"  # Fondo de los paneles laterales
-textColor = "#4B0082"  # Texto principal en un tono oscuro de lila
-font = "sans serif"  
